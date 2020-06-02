@@ -23,7 +23,8 @@ public class Main {
         buildOntology(repository);
         createIndividuals(repository);
 
-        execQueryGetEmployee(repository);
+        execQueryGetEmployeesName(repository);
+        execQueryGetEmployeesNameWithSalaryMoreThan5k(repository);
     }
 
     static void buildOntology(Repository repository) {
@@ -36,8 +37,12 @@ public class Main {
         try {
             conn.add(ShopClasses.Amount, RDF.TYPE, RDFS.CLASS);
             conn.add(ShopClasses.Company, RDF.TYPE, RDFS.CLASS);
-            conn.add(ShopClasses.Currency, RDF.TYPE, RDFS.CLASS);
             conn.add(ShopClasses.Distributor, RDF.TYPE, RDFS.CLASS);
+            conn.add(ShopClasses.Distributor, RDFS.SUBCLASSOF, ShopClasses.Company);
+            conn.add(ShopClasses.Retailer, RDF.TYPE, RDFS.CLASS);
+            conn.add(ShopClasses.Retailer, RDFS.SUBCLASSOF, ShopClasses.Company);
+            conn.add(ShopClasses.Employee, RDFS.SUBCLASSOF, FOAF.PERSON);
+            conn.add(ShopClasses.Currency, RDF.TYPE, RDFS.CLASS);
             conn.add(ShopClasses.Location, RDF.TYPE, RDFS.CLASS);
             conn.add(ShopClasses.Employee, RDF.TYPE, RDFS.CLASS);
             conn.add(ShopClasses.Employee, RDFS.SUBCLASSOF, FOAF.PERSON);
@@ -49,7 +54,6 @@ public class Main {
             conn.add(ShopClasses.Worker, RDFS.SUBCLASSOF, ShopClasses.Employee);
             conn.add(ShopClasses.Product, RDF.TYPE, RDFS.CLASS);
             conn.add(ShopClasses.Product_Category, RDF.TYPE, RDFS.CLASS);
-            conn.add(ShopClasses.Retailer, RDF.TYPE, RDFS.CLASS);
             conn.add(ShopClasses.Section, RDF.TYPE, RDFS.CLASS);
 
             conn.add(ShopProperties.ObjectProperties.address, RDF.TYPE, RDF.PREDICATE);
@@ -130,25 +134,29 @@ public class Main {
         createSection(repository, ShopIndividuals.BICYCLE, ShopIndividuals.Retailer1, ShopIndividuals.Product3, ShopIndividuals.Product4);
     }
 
-    static void execQueryGetEmployee(Repository rep) {
+    /**
+     * Return all employees name.
+     */
+    static void execQueryGetEmployeesName(Repository rep) {
 
         RepositoryConnection conn = rep.getConnection();
         try {
             String queryString =
                     "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>" +
-                    "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>" +
-                    "PREFIX ns: <" + NAMESPACE + ">" +
-                    "select distinct ?employee where { "+
-                    "?x rdfs:subClassOf ns:Employee . " +
-                    "?employee rdf:type ?x . " +
-                    "}";
+                            "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>" +
+                            "PREFIX ns: <" + NAMESPACE + ">" +
+                            "select distinct ?name where { " +
+                            "?employeeSpecialization rdfs:subClassOf ns:Employee . " +
+                            "?employee rdf:type ?employeeSpecialization . " +
+                            "?employee ns:name ?name . " +
+                            "}";
 
             TupleQuery query = conn.prepareTupleQuery(queryString);
 
             try (TupleQueryResult result = query.evaluate()) {
                 while (result.hasNext()) {
                     BindingSet solution = result.next();
-                    String line = "?employee = " + solution.getValue("employee");
+                    String line = "?employee = " + solution.getValue("name");
                     System.out.println(line);
                 }
             }
@@ -156,6 +164,36 @@ public class Main {
             conn.close();
         }
     }
+
+    static void execQueryGetEmployeesNameWithSalaryMoreThan5k(Repository rep) {
+
+        RepositoryConnection conn = rep.getConnection();
+        try {
+            String queryString =
+                    "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>" +
+                            "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>" +
+                            "PREFIX ns: <" + NAMESPACE + ">" +
+                            "select distinct ?employeeName where { " +
+                            "?employee ns:salary ?salary . " +
+                            "?salary ns:amount ?amount . " +
+                            "FILTER (?amount > 500000) ." +
+                            "?employee ns:name ?employeeName ." +
+                            "}";
+
+            TupleQuery query = conn.prepareTupleQuery(queryString);
+
+            try (TupleQueryResult result = query.evaluate()) {
+                while (result.hasNext()) {
+                    BindingSet solution = result.next();
+                    String line = "?employeeName = " + solution.getValue("employeeName");
+                    System.out.println(line);
+                }
+            }
+        } finally {
+            conn.close();
+        }
+    }
+
 
     static void createAmount(Repository repository, IRI iri, int amount, IRI currency) {
         RepositoryConnection conn = repository.getConnection();
