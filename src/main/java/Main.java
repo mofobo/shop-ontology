@@ -15,7 +15,7 @@ import org.eclipse.rdf4j.sail.memory.MemoryStore;
 
 public class Main {
 
-    private static final String NAMESPACE = "https://mofobo.ch/";
+    public static final String NAMESPACE = "https://mofobo.ch/";
 
     public static void main(String[] args) {
         Repository repository = new SailRepository(new MemoryStore());
@@ -23,8 +23,11 @@ public class Main {
         buildOntology(repository);
         createIndividuals(repository);
 
-        execQueryGetEmployeesName(repository);
-        execQueryGetEmployeesNameWithSalaryMoreThan5k(repository);
+        SparqlQueries.execQueryGetEmployeesName(repository);
+        SparqlQueries.execQueryGetEmployeesNameWithSalaryMoreThan5k(repository);
+        SparqlQueries.execQueryGetAllDistributorNamesAndTheirLocations(repository);
+        SparqlQueries.execQueryGetAllTandemBikeAndAppleProductNames(repository);
+        SparqlQueries.execQueryGetAllProductsOrderedByDescendingPrice(repository);
     }
 
     static void buildOntology(Repository repository) {
@@ -98,7 +101,7 @@ public class Main {
         createAmount(repository, ShopIndividuals.Price3, 120000, ShopIndividuals.SwissFranc);
         createAmount(repository, ShopIndividuals.Price4, 240000, ShopIndividuals.SwissFranc);
 
-        createDistributor(repository, ShopIndividuals.Distributor1, "ALIGRO SA", 234, ShopIndividuals.Location3);
+        createDistributor(repository, ShopIndividuals.Distributor1, "ALIGRO SA", 234, null);
         createDistributor(repository, ShopIndividuals.Distributor2, "ALL SPORTS SA", 123, ShopIndividuals.Location3);
 
         createRetailer(repository, ShopIndividuals.Retailer1, "Au Bon Prix", 53, "Public");
@@ -134,67 +137,6 @@ public class Main {
         createSection(repository, ShopIndividuals.BICYCLE, ShopIndividuals.Retailer1, ShopIndividuals.Product3, ShopIndividuals.Product4);
     }
 
-    /**
-     * Return all employees name.
-     */
-    static void execQueryGetEmployeesName(Repository rep) {
-
-        RepositoryConnection conn = rep.getConnection();
-        try {
-            String queryString =
-                    "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>" +
-                            "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>" +
-                            "PREFIX ns: <" + NAMESPACE + ">" +
-                            "select distinct ?name where { " +
-                            "?employeeSpecialization rdfs:subClassOf ns:Employee . " +
-                            "?employee rdf:type ?employeeSpecialization . " +
-                            "?employee ns:name ?name . " +
-                            "}";
-
-            TupleQuery query = conn.prepareTupleQuery(queryString);
-
-            try (TupleQueryResult result = query.evaluate()) {
-                while (result.hasNext()) {
-                    BindingSet solution = result.next();
-                    String line = "?employee = " + solution.getValue("name");
-                    System.out.println(line);
-                }
-            }
-        } finally {
-            conn.close();
-        }
-    }
-
-    static void execQueryGetEmployeesNameWithSalaryMoreThan5k(Repository rep) {
-
-        RepositoryConnection conn = rep.getConnection();
-        try {
-            String queryString =
-                    "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>" +
-                            "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>" +
-                            "PREFIX ns: <" + NAMESPACE + ">" +
-                            "select distinct ?employeeName where { " +
-                            "?employee ns:salary ?salary . " +
-                            "?salary ns:amount ?amount . " +
-                            "FILTER (?amount > 500000) ." +
-                            "?employee ns:name ?employeeName ." +
-                            "}";
-
-            TupleQuery query = conn.prepareTupleQuery(queryString);
-
-            try (TupleQueryResult result = query.evaluate()) {
-                while (result.hasNext()) {
-                    BindingSet solution = result.next();
-                    String line = "?employeeName = " + solution.getValue("employeeName");
-                    System.out.println(line);
-                }
-            }
-        } finally {
-            conn.close();
-        }
-    }
-
-
     static void createAmount(Repository repository, IRI iri, int amount, IRI currency) {
         RepositoryConnection conn = repository.getConnection();
         ValueFactory f = repository.getValueFactory();
@@ -214,7 +156,7 @@ public class Main {
             conn.add(iri, RDF.TYPE, ShopClasses.Distributor);
             conn.add(iri, ShopProperties.DataProperties.name, f.createLiteral(name, XMLSchema.STRING));
             conn.add(iri, ShopProperties.DataProperties.employeesNb, f.createLiteral(String.valueOf(employeesNb), XMLSchema.INTEGER));
-            conn.add(iri, ShopProperties.ObjectProperties.address, address);
+            if (address != null) conn.add(iri, ShopProperties.ObjectProperties.address, address);
         } finally {
             conn.close();
         }
